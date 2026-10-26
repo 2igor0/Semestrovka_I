@@ -2,12 +2,5 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/../../../KPV/SuperStore.Orders" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/../../../KPVDemo/PetHome" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/../../../deloMechti" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/../../../deloMechti/ConnectDB" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/../../../homeworks/db/database-2igor0-P4AsI" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/../../../homeworks/httplistener-2igor0-a5ynS" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/../../../kislov/oris-ii-course-httplistener" vcs="Git" />
   </component>
 </project>

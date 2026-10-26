@@ -1,39 +1,21 @@
-﻿using System.Net;
+﻿using System.Globalization;
+using System.Net;
 using System.Net.Sockets;
 using System.Text;
 
 
 var socketServer = new Socket(
     AddressFamily.InterNetwork, 
-    SocketType.Stream, 
-    ProtocolType.Tcp);
+    SocketType.Dgram, 
+    ProtocolType.Udp);
     
 socketServer.Bind(
-    new IPEndPoint(new IPAddress(new byte[] { 127, 0, 0, 1 }), 5000));
-    
-socketServer.Listen();
+    new IPEndPoint(new IPAddress(new byte[] { 127, 0, 0, 1 }), 5050));
 
-var clients = new List<Socket>(); // сделать очередь, сделать блокировку потока, чтобы убирать из начала и добавлять в конец
-Console.WriteLine("Сервер запущен. Ожидание подключений...");
+var remoteIp = new IPEndPoint(IPAddress.Any, 0);
+var bytes = new byte[512];
+var result = await socketServer.ReceiveFromAsync(bytes, remoteIp);
 
-Task.Run(async () =>
-{
-    while (true)
-    {
-        Socket client = await socketServer.AcceptAsync(); //короче из-за using у нас походу удаляется объект!
-        Console.WriteLine($"Адрес подключенного клиента: {client.RemoteEndPoint}");
-        clients.Add(client);
-    }
-});
-
-
-byte[] data = new byte[512];
-
-while (true)
-{
-    if (clients.Count != 0)
-    {
-        var receive = await clients[0].ReceiveAsync(data);
-        Console.WriteLine(Encoding.UTF8.GetString(data, 0 , receive));
-    }
-} 
+var answer = Encoding.UTF8.GetString(bytes);
+Console.WriteLine(answer);
+Console.WriteLine(result.RemoteEndPoint.ToString());
