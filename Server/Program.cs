@@ -1,21 +1,86 @@
-﻿using System.Globalization;
-using System.Net;
+﻿using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading.Channels;
+using Protocol;
 
+namespace Server;
 
-var socketServer = new Socket(
-    AddressFamily.InterNetwork, 
-    SocketType.Dgram, 
-    ProtocolType.Udp);
+class Program
+{
+    static async Task Main()
+    {
+        var socketServer = new Socket(
+            AddressFamily.InterNetwork, 
+            SocketType.Dgram, 
+            ProtocolType.Udp);
     
-socketServer.Bind(
-    new IPEndPoint(new IPAddress(new byte[] { 127, 0, 0, 1 }), 5050));
+        socketServer.Bind(
+            new IPEndPoint(new IPAddress(new byte[] { 127, 0, 0, 1 }), 5050));
+        
+        // переделать на Bounded, так как мб перегрузка будет
+        var orderChannel = Channel.CreateUnbounded<Order>(); 
+        var couriersIp = Channel.CreateUnbounded<EndPoint>(); 
+        
+        using var cts = new CancellationTokenSource();
 
-var remoteIp = new IPEndPoint(IPAddress.Any, 0);
-var bytes = new byte[512];
-var result = await socketServer.ReceiveFromAsync(bytes, remoteIp);
+        Task generatorTask = Task.Run(() => StartOrderGeneratorAsync(orderChannel.Writer, cts.Token), cts.Token);
+        Task endpointsTask = Task.Run(() => ProtocolHandler.AcceptUdp(socketServer, couriersIp.Writer, cts.Token), cts.Token); 
+    
+        Console.WriteLine("Сервер запущен. Ожидание заказов...");
 
-var answer = Encoding.UTF8.GetString(bytes);
-Console.WriteLine(answer);
-Console.WriteLine(result.RemoteEndPoint.ToString());
+        //эта штука зависат, когда нет курьеров и не выводит статусы клиентам, которые сделали новый заказ
+        await foreach (Order order in orderChannel.Reader.ReadAllAsync())
+        {
+            Console.WriteLine($"[Main] Обрабатываю заказ {order.Id}");
+            
+            // тут само назначение
+            EndPoint targetCourier = null!; //?
+            if (await couriersIp.Reader.WaitToReadAsync(cts.Token))
+            {
+                targetCourier = await couriersIp.Reader.ReadAsync(); 
+            }
+            else
+            {
+                //тут наверное если такая ситуация, надо будет запускать таску котоая будет ждать появления курьеров
+                throw new Exception("нет ни одного курьера на линии, не можем доставить, ваш заказ помещен в очередь");
+            }
+
+            //реализовать граматно переброску курьеру
+            var bytes = Encoding.UTF8.GetBytes(ProtocolServer.ConvertOrder(order));
+            await socketServer.SendToAsync(bytes, targetCourier);
+        }
+
+        await Task.WhenAll(generatorTask, endpointsTask);
+    }
+    
+    
+    static async Task StartOrderGeneratorAsync(ChannelWriter<Order> writer, CancellationToken ct)
+    {
+        try
+        {
+            while (!ct.IsCancellationRequested)
+            {
+                // приходят с сервера заказы продуктов
+
+                Console.WriteLine("Введите адрес для доставки:");
+                var address = Console.ReadLine() ?? "";
+
+                Console.WriteLine("Введите продукты для доставки:");
+                var description = Console.ReadLine() ?? "";
+                
+                var order = Order.Create(description, address);
+                
+                await writer.WriteAsync(order, ct);
+                Console.WriteLine($"-> [Фон] Появился новый заказ # {order.Id}");
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            writer.Complete();
+        }
+    }
+}
