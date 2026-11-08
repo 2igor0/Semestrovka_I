@@ -6,7 +6,7 @@ using Protocol;
 
 namespace Server;
 
-public static class ProtocolHandler
+public static class ProtocolHandler //всю архитектуру пересотреть везде
 {
     public static async Task AcceptUdp(Socket socketServer, ChannelWriter<EndPoint> endPointWriter, CancellationToken token)
     {
@@ -15,31 +15,41 @@ public static class ProtocolHandler
         
         while (!token.IsCancellationRequested)
         {
-            var result = await socketServer.ReceiveFromAsync(bytes, remoteIp);
+            var result = await socketServer.ReceiveFromAsync(bytes, remoteIp); //после этого еще одну таску запускать
+            var datagram = bytes.AsSpan(0, result.ReceivedBytes);
             
-            var answer = Encoding.UTF8.GetString(bytes, 0, result.ReceivedBytes);
+            var answer = ProtocolCourier.Parser(datagram);
             
-            if (answer == "start")
+            if (answer.MessageType == MessageType.START)
             {
                 await endPointWriter.WriteAsync(result.RemoteEndPoint, token);
             }
-            else
+            else if (answer.MessageType == MessageType.READY)
             {
-                Router(answer, result.RemoteEndPoint);
+                if (InMemoryPetRepository.Get(answer.OrderId)) // так же проверять прошлый статус
+                {
+                    Console.WriteLine($"READY курьер ответил готов, на вот этот СУЩЕСТВУЮЩИЙ заказ: {answer.OrderId}");
+                }
+                else
+                {
+                    Console.WriteLine($"READY курьер ответил готов, на несуществующий заказ: {answer.OrderId}");
+                }
+            }
+            else if (answer.MessageType == MessageType.ACK)
+            {
+                
+            }
+            else if (answer.MessageType == MessageType.STARTED)
+            {
+                
+            }
+            else 
+            {
+                throw new Exception($"Неопределенный ввод {answer.MessageType}");
             }
             
             Console.WriteLine(answer);
             Console.WriteLine(result.RemoteEndPoint);
         }
     }
-    
-    public static void Router(string message, EndPoint endPoint)
-    {
-        if (message == ProtocolServer.Ready)
-        {
-            Console.WriteLine("курьер ответил готов");
-        }
-    }
-    
-    
 }

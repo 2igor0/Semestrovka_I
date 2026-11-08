@@ -1,6 +1,5 @@
 ﻿using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading.Channels;
 using Protocol;
 
@@ -34,7 +33,6 @@ class Program
         {
             Console.WriteLine($"[Main] Обрабатываю заказ {order.Id}");
             
-            // тут само назначение
             EndPoint targetCourier = null!; //?
             if (await couriersIp.Reader.WaitToReadAsync(cts.Token))
             {
@@ -47,7 +45,7 @@ class Program
             }
 
             //реализовать граматно переброску курьеру
-            var bytes = Encoding.UTF8.GetBytes(ProtocolServer.ConvertOrder(order));
+            var bytes = ProtocolServer.EncodeOrder(order);
             await socketServer.SendToAsync(bytes, targetCourier);
         }
 
@@ -71,6 +69,7 @@ class Program
                 
                 var order = Order.Create(description, address);
                 
+                InMemoryPetRepository.Add(order);
                 await writer.WriteAsync(order, ct);
                 Console.WriteLine($"-> [Фон] Появился новый заказ # {order.Id}");
             }

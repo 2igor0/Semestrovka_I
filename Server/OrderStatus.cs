@@ -1,6 +1,6 @@
 namespace Server;
 
-public enum OrderStatus
+public enum OrderStatus 
 {
     New,
     Proposed, //предложенный
