@@ -18,7 +18,7 @@ public static class ProtocolCourier
     // надо просто парсер сделать и в зависимости от mesType свои обработчик
     public static ProtocolMessage Parser(ReadOnlySpan<byte> datagram)
     {
-        if (datagram.Length < MinDatagramSize || datagram.Length > MaxDatagramBytes)
+        if (datagram.Length > MaxDatagramBytes)
         {
             return null;
         }
@@ -26,11 +26,6 @@ public static class ProtocolCourier
         var source = datagram;
         var mesType = source[0];
         source = source[1..];
-        
-        if (mesType != (byte)MessageType.ORDER)
-        {
-            throw new Exception("Invalid order");
-        }
         
         var courierId = new Guid(source[..GuidSize]);
         source = source[GuidSize..];
@@ -101,14 +96,13 @@ public static class ProtocolCourier
         return true;
     }
     
-    //тут еще CourierId или сразу в энкод мессадж, но вообще хочется будто сделать приватным енкод мессге
-    public static byte[] EncodeReady(Guid orderId)
+    public static byte[] EncodeReady(Guid orderId, Guid courierId)
     {
-        return ProtocolServer.EncodeMessage(MessageType.READY, Guid.Empty, orderId, []);
+        return ProtocolServer.EncodeMessage(MessageType.READY, courierId, orderId, []);
     }
     
-    public static byte[] EncodeStart()
+    public static byte[] EncodeStart(Guid courierId)
     {
-        return ProtocolServer.EncodeMessage(MessageType.START, Guid.Empty, Guid.Empty, []);
+        return ProtocolServer.EncodeMessage(MessageType.START, courierId, Guid.Empty, []);
     }
 }

@@ -30,7 +30,7 @@ public static class ProtocolHandler
                     continue;
                 }
 
-                var readyBytes = ProtocolCourier.EncodeReady(parseAnswer.OrderId); //тут еще курьер ID
+                var readyBytes = ProtocolCourier.EncodeReady(parseAnswer.OrderId, parseAnswer.CourierId); 
                 await socketCourier.SendToAsync(readyBytes, Server, token);
                 
                 Console.WriteLine($"Получен заказ {parseAnswer.OrderId}.");

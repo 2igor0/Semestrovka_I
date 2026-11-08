@@ -15,7 +15,7 @@ public static class ProtocolServer
         encoderShouldEmitUTF8Identifier: false,
         throwOnInvalidBytes: true);
     
-    public static byte[] EncodeOrder(IOrder order)
+    public static byte[] EncodeOrder(IOrder order, Guid courierId)
     {
         ArgumentNullException.ThrowIfNull(order);
         ArgumentNullException.ThrowIfNull(order.Address);
@@ -52,7 +52,7 @@ public static class ProtocolServer
 
         Utf8.GetBytes(order.Description, buffer.AsSpan(offset, descriptionSize));
         
-        return EncodeMessage(MessageType.ORDER, Guid.Empty, order.Id, buffer);
+        return EncodeMessage(MessageType.ORDER, courierId, order.Id, buffer);
     }
 
     private static int GetUtf8ByteCount(string value, string paramName)

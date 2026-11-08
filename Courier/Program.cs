@@ -11,6 +11,16 @@ var socket = new Socket(
 
 IPEndPoint serverEndpoint = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 5050);
 
+var profile = "courier1"; 
+var path = Path.Combine("profiles", $"{profile}.key");
+var text = File.ReadAllText(path).Trim();
+
+if (!Guid.TryParse(text, out var courierKey))
+{
+    Console.WriteLine($"В файле {path} нет корректного GUID.");
+    return;
+}
+
 Console.WriteLine("Для выхода на линию введи start: ");
 var command = Console.ReadLine();
 while (command != "start")
@@ -19,7 +29,7 @@ while (command != "start")
     command = Console.ReadLine();
 }
 
-var buffer = ProtocolCourier.EncodeStart();
+var buffer = ProtocolCourier.EncodeStart(courierKey);
 
 await socket.SendToAsync(buffer, serverEndpoint);
 

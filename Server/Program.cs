@@ -19,7 +19,7 @@ class Program
         
         // переделать на Bounded, так как мб перегрузка будет
         var orderChannel = Channel.CreateUnbounded<Order>(); 
-        var couriersIp = Channel.CreateUnbounded<EndPoint>(); 
+        var couriersIp = Channel.CreateUnbounded<Guid>(); 
         
         using var cts = new CancellationTokenSource();
 
@@ -32,8 +32,8 @@ class Program
         await foreach (Order order in orderChannel.Reader.ReadAllAsync())
         {
             Console.WriteLine($"[Main] Обрабатываю заказ {order.Id}");
-            
-            EndPoint targetCourier = null!; //?
+
+            Guid targetCourier;
             if (await couriersIp.Reader.WaitToReadAsync(cts.Token))
             {
                 targetCourier = await couriersIp.Reader.ReadAsync(); 
@@ -44,9 +44,11 @@ class Program
                 throw new Exception("нет ни одного курьера на линии, не можем доставить, ваш заказ помещен в очередь");
             }
 
+            var targetEndPointCourier = InMemoryCourierRepository.Get(targetCourier);
+            
             //реализовать граматно переброску курьеру
-            var bytes = ProtocolServer.EncodeOrder(order);
-            await socketServer.SendToAsync(bytes, targetCourier);
+            var bytes = ProtocolServer.EncodeOrder(order, targetCourier);
+            await socketServer.SendToAsync(bytes, targetEndPointCourier);
         }
 
         await Task.WhenAll(generatorTask, endpointsTask);

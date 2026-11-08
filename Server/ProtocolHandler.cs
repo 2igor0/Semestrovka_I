@@ -8,7 +8,7 @@ namespace Server;
 
 public static class ProtocolHandler //всю архитектуру пересотреть везде
 {
-    public static async Task AcceptUdp(Socket socketServer, ChannelWriter<EndPoint> endPointWriter, CancellationToken token)
+    public static async Task AcceptUdp(Socket socketServer, ChannelWriter<Guid> endPointWriter, CancellationToken token)
     {
         var remoteIp = new IPEndPoint(IPAddress.Any, 0);
         var bytes = new byte[512];
@@ -17,12 +17,20 @@ public static class ProtocolHandler //всю архитектуру пересо
         {
             var result = await socketServer.ReceiveFromAsync(bytes, remoteIp); //после этого еще одну таску запускать
             var datagram = bytes.AsSpan(0, result.ReceivedBytes);
-            
             var answer = ProtocolCourier.Parser(datagram);
             
             if (answer.MessageType == MessageType.START)
             {
-                await endPointWriter.WriteAsync(result.RemoteEndPoint, token);
+                if (InMemoryCourierRepository.Contains(answer.CourierId)) // надо еще проверять есть ли у него текущие заказы
+                {
+                    InMemoryCourierRepository.Update(answer.CourierId, result.RemoteEndPoint);
+                }
+                else
+                {
+                    InMemoryCourierRepository.Add(answer.CourierId, result.RemoteEndPoint);
+                }
+               
+                await endPointWriter.WriteAsync(answer.CourierId, token);
             }
             else if (answer.MessageType == MessageType.READY)
             {
@@ -48,8 +56,7 @@ public static class ProtocolHandler //всю архитектуру пересо
                 throw new Exception($"Неопределенный ввод {answer.MessageType}");
             }
             
-            Console.WriteLine(answer);
-            Console.WriteLine(result.RemoteEndPoint);
+            Console.WriteLine($"уже обработали {answer.MessageType}");
         }
     }
 }
