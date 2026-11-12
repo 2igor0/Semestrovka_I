@@ -3,6 +3,7 @@ using System.Net.Sockets;
 using System.Text;
 using Courier;
 using Protocol;
+using Protocol.@enum;
 
 // dotnet run --project Courier -- --profile courier1
 
@@ -72,13 +73,16 @@ while (command != "start")
 
 var buffer = ProtocolCourier.EncodeStart(courierKey);
 
+var session = new CourierSession();
+session.TrackPending(MessageType.START, Guid.Empty, buffer);
+
 await socket.SendToAsync(buffer, serverEndpoint);
 
-var session = new CourierSession();
 using var cts = new CancellationTokenSource();
 await Task.WhenAll(
     ProtocolHandler.AcceptUdp(socket, session, cts.Token),
-    ProtocolHandler.ReadCommandsAsync(socket, session, cts.Token));
+    ProtocolHandler.ReadCommandsAsync(socket, session, cts.Token),
+    Ticker.TimerStart(socket, session, cts.Token));
 
 static string? FindProfilesDirectory()
 {

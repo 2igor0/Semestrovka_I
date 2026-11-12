@@ -28,4 +28,22 @@ public class GeneralParser
 
         return new ProtocolMessage((MessageType)mesType, courierId, orderId, source.ToArray());
     }
+
+    public static bool TryParseAckedType(byte[] payload, out MessageType ackedType)
+    {
+        ackedType = default;
+
+        if (payload is null || payload.Length != 1)
+        {
+            return false;
+        }
+
+        if (!Enum.IsDefined(typeof(MessageType), payload[0]))
+        {
+            return false;
+        }
+
+        ackedType = (MessageType)payload[0];
+        return true;
+    }
 }

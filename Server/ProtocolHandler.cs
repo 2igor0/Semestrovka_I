@@ -3,6 +3,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading.Channels;
 using Protocol;
+using Protocol.@enum;
 
 namespace Server;
 
@@ -22,6 +23,12 @@ public static class ProtocolHandler
             if (answer is null || !Enum.IsDefined(answer.MessageType))
             {
                 continue;
+            }
+
+            if (answer.MessageType != MessageType.ACK)
+            {
+                var ackBytes = GeneralEncoder.EncodeAck(answer.CourierId, answer.OrderId, answer.MessageType);
+                await socketServer.SendToAsync(ackBytes, result.RemoteEndPoint, token);
             }
 
             await eventWriter.WriteAsync(

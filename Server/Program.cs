@@ -7,8 +7,23 @@ using Protocol.@enum;
 
 namespace Server;
 
+class PendingMessage
+{
+    public byte[] Bytes { get; set; }
+    public int Attempts {get; set;}
+    public DateTime LastSendTime {get; set;}
+    
+    /*
+     - максимальное число попыток;
+    - признак «останавливать по Ack» — почти всегда да;
+    - необязательный тип логического ответа, например для GO это STARTED.
+    */
+}
+
 class Program
 {
+    record PendingMessageKey(Guid OrderId, Guid CourierId, MessageType MessageType);
+    
     static async Task Main()
     {
         var socketServer = new Socket(
@@ -25,10 +40,13 @@ class Program
         var availableCouriers = new Queue<Guid>();
         var availableCourierKeys = new HashSet<Guid>();
         
+        var pendingMessages = new Dictionary<PendingMessageKey, PendingMessage>();
+        
         using var cts = new CancellationTokenSource();
 
         Task generatorTask = Task.Run(() => StartOrderGeneratorAsync(events.Writer, cts.Token), cts.Token);
-        Task endpointsTask = Task.Run(() => ProtocolHandler.AcceptUdp(socketServer, events.Writer, cts.Token), cts.Token); 
+        Task endpointsTask = Task.Run(() => ProtocolHandler.AcceptUdp(socketServer, events.Writer, cts.Token), cts.Token);
+        Task ticker = Task.Run(() => Ticker.TimerStart(events.Writer, cts.Token), cts.Token);
     
         Console.WriteLine("Сервер запущен. Ожидание заказов...");
 
@@ -49,17 +67,20 @@ class Program
                             socketServer,
                             availableCouriers,
                             availableCourierKeys,
+                            pendingMessages,
                             cts.Token);
                         break;
 
                     case ServerEventKind.Tick:
+                        await HandleTickAsync(socketServer, pendingMessages, cts.Token);
                         break;
                 }
 
                 await TryDispatchOrdersAsync(
                     socketServer,
                     availableCouriers,
-                    availableCourierKeys,
+                    availableCourierKeys, 
+                    pendingMessages,
                     cts.Token);
             }
         }
@@ -118,6 +139,7 @@ class Program
         Socket socketServer,
         Queue<Guid> availableCouriers,
         HashSet<Guid> availableCourierKeys,
+        Dictionary<PendingMessageKey, PendingMessage> pendingMessages,
         CancellationToken token)
     {
         var message = serverEvent.Message!;
@@ -159,11 +181,30 @@ class Program
             else if (order.CourierId == message.CourierId)
             {
                 var mes = ProtocolServer.EncodeGo(message.OrderId, message.CourierId);
+                pendingMessages.Remove(new PendingMessageKey(order.Id, message.CourierId, MessageType.ORDER));
                 
                 if (order.Status == OrderStatus.WaitingApprov)
+                {
+                    var key = new PendingMessageKey(order.Id, message.CourierId, MessageType.GO);
+                    if (pendingMessages.TryGetValue(key, out var pending))
+                    {
+                        pending.Attempts++;
+                        pending.LastSendTime = DateTime.Now;
+                    }
+                    
                     await socketServer.SendToAsync(mes, remoteEndPoint, token);
+                }
                 else if (order.Status == OrderStatus.Proposed)
                 {
+                    var key = new PendingMessageKey(order.Id, message.CourierId, MessageType.GO);
+                    var value = new PendingMessage()
+                    {
+                        Bytes = mes,
+                        Attempts = 0,
+                        LastSendTime = DateTime.Now
+                    };
+                    pendingMessages.Add(key, value);
+                    
                     await socketServer.SendToAsync(mes, remoteEndPoint, token);
                     order.Status = OrderStatus.WaitingApprov;
                 }
@@ -181,26 +222,28 @@ class Program
         }
         else if (message.MessageType == MessageType.ACK)
         {
-            
+            if (GeneralParser.TryParseAckedType(message.Payload, out var ackedType))
+            {
+                var key = new PendingMessageKey(message.OrderId, message.CourierId, ackedType);
+                pendingMessages.Remove(key);
+            }
         }
         else if (message.MessageType == MessageType.STARTED)
         {
             var order = InMemoryOrderRepository.GetById(message.OrderId);
-
-            if (order is null)
-            {
-                await Revoked(message, remoteEndPoint, socketServer, token);
-                return;
-            }
-
-            if (order.CourierId != message.CourierId)
+            
+            if (order is null || order.CourierId != message.CourierId)
             {
                 await Revoked(message, remoteEndPoint, socketServer, token);
                 return;
             }
 
             if (order.Status  == OrderStatus.WaitingApprov)
+            {
+                var key = new PendingMessageKey(order.Id, message.CourierId, MessageType.GO);
+                pendingMessages.Remove(key);
                 order.Status = OrderStatus.Processing;
+            }
             else return;
         }
         else if (message.MessageType == MessageType.DELIVERED)
@@ -234,16 +277,50 @@ class Program
         Console.WriteLine($"уже обработали {message.MessageType}");
     }
 
-    private static async Task Revoked(ProtocolMessage messsage, EndPoint endPoint, Socket socketServer, CancellationToken token)
+    private static async Task Revoked(ProtocolMessage messsage, EndPoint endPoint, Socket socketServer,CancellationToken token)
     {
         var bytes = ProtocolServer.EncodeRevoked(messsage.OrderId, messsage.CourierId);
         await socketServer.SendToAsync(bytes, endPoint, token);
+    }
+
+    private static async Task HandleTickAsync(
+        Socket socketServer,
+        Dictionary<PendingMessageKey, PendingMessage> pendingMessages,
+        CancellationToken token)
+    {
+        foreach (var (key, value) in pendingMessages.ToList())
+        {
+            if ((DateTime.Now - value.LastSendTime).TotalSeconds < ServerConstants.ResendIntervalSeconds)
+            {
+                continue;
+            }
+
+            if (value.Attempts >= ServerConstants.MaxResendAttempts)
+            {
+                pendingMessages.Remove(key);
+                Console.WriteLine($"Исчерпаны повторы для {key.MessageType} по заказу {key.OrderId}.");
+                continue;
+            }
+
+            if (!InMemoryCourierRepository.Contains(key.CourierId))
+            {
+                pendingMessages.Remove(key);
+                continue;
+            }
+
+            var courierEndPoint = InMemoryCourierRepository.Get(key.CourierId);
+            await socketServer.SendToAsync(value.Bytes, courierEndPoint, token);
+
+            value.Attempts++;
+            value.LastSendTime = DateTime.Now;
+        }
     }
 
     private static async Task TryDispatchOrdersAsync(
         Socket socketServer,
         Queue<Guid> availableCouriers,
         HashSet<Guid> availableCourierKeys,
+        Dictionary<PendingMessageKey, PendingMessage> pendingMessages,
         CancellationToken token)
     {
         var newOrders = InMemoryOrderRepository.GetNewOrders().ToList();
@@ -263,6 +340,16 @@ class Program
             newOrders.RemoveAt(0);
             
             var bytes = ProtocolServer.EncodeOrder(order, courierKey);
+            
+            var key = new PendingMessageKey(order.Id, courierKey, MessageType.ORDER);
+            var value = new PendingMessage()
+            {
+                Bytes = bytes,
+                Attempts = 0,
+                LastSendTime = DateTime.Now
+            };
+            pendingMessages.Add(key, value);
+            
             await socketServer.SendToAsync(bytes, courierEndPoint, token);
 
             order.CourierId = courierKey;

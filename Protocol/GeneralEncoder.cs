@@ -32,4 +32,9 @@ public static class GeneralEncoder
 
         return buffer;
     }
+
+    public static byte[] EncodeAck(Guid courierId, Guid orderId, MessageType ackedType)
+    {
+        return EncodeMessage(MessageType.ACK, courierId, orderId, new[] { (byte)ackedType });
+    }
 }

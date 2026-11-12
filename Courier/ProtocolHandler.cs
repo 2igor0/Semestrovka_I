@@ -36,6 +36,9 @@ public static class ProtocolHandler
                     continue;
                 }
 
+                var orderAckBytes = GeneralEncoder.EncodeAck(parseAnswer.CourierId, parseAnswer.OrderId, MessageType.ORDER);
+                await SendAsync(socketCourier, orderAckBytes, token);
+
                 if (!session.TryAcceptOrder(parseAnswer.OrderId, parseAnswer.CourierId))
                 {
                     Console.WriteLine("Занят другим заказом, новый заказ проигнорирован.");
@@ -43,6 +46,7 @@ public static class ProtocolHandler
                 }
 
                 var readyBytes = ProtocolCourier.EncodeReady(parseAnswer.OrderId, parseAnswer.CourierId);
+                session.TrackPending(MessageType.READY, parseAnswer.OrderId, readyBytes);
                 await SendAsync(socketCourier, readyBytes, token);
 
                 Console.WriteLine($"Получен заказ {parseAnswer.OrderId}.");
@@ -51,6 +55,9 @@ public static class ProtocolHandler
             }
             else if (parseAnswer.MessageType == MessageType.GO)
             {
+                var goAckBytes = GeneralEncoder.EncodeAck(parseAnswer.CourierId, parseAnswer.OrderId, MessageType.GO);
+                await SendAsync(socketCourier, goAckBytes, token);
+
                 if (!session.TryBeginDelivery(
                         parseAnswer.OrderId,
                         parseAnswer.CourierId,
@@ -62,6 +69,8 @@ public static class ProtocolHandler
                 }
 
                 var startedBytes = ProtocolCourier.EncodeStarted(parseAnswer.CourierId, parseAnswer.OrderId);
+                session.TryRemovePending(MessageType.READY, parseAnswer.OrderId);
+                session.TrackPending(MessageType.STARTED, parseAnswer.OrderId, startedBytes);
                 await SendAsync(socketCourier, startedBytes, token);
 
                 if (startNewTimer)
@@ -74,6 +83,13 @@ public static class ProtocolHandler
                 if (session.TryRevoke(parseAnswer.OrderId))
                 {
                     Console.WriteLine($"Заказ {parseAnswer.OrderId} отозван.");
+                }
+            }
+            else if (parseAnswer.MessageType == MessageType.ACK)
+            {
+                if (GeneralParser.TryParseAckedType(parseAnswer.Payload, out var ackedType))
+                {
+                    session.TryRemovePending(ackedType, parseAnswer.OrderId);
                 }
             }
             else
@@ -98,6 +114,7 @@ public static class ProtocolHandler
                 if (session.TryCompleteDelivery(out var orderId, out var courierId))
                 {
                     var deliveredBytes = ProtocolCourier.EncodeDelivered(courierId, orderId);
+                    session.TrackPending(MessageType.DELIVERED, orderId, deliveredBytes);
                     await SendAsync(socketCourier, deliveredBytes, token);
                     Console.WriteLine($"Заказ {orderId} доставлен.");
                 }
@@ -124,7 +141,7 @@ public static class ProtocolHandler
         }
     }
 
-    private static async Task SendAsync(Socket socketCourier, byte[] datagram, CancellationToken token)
+    public static async Task SendAsync(Socket socketCourier, byte[] datagram, CancellationToken token)
     {
         await SendGate.WaitAsync(token);
 
