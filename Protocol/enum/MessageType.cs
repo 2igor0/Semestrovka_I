@@ -1,4 +1,4 @@
-namespace Protocol;
+namespace Protocol.@enum;
 
 public enum MessageType: byte
 {
@@ -8,5 +8,6 @@ public enum MessageType: byte
     READY,
     GO,
     STARTED,
-    DELIVERED
+    DELIVERED,
+    REVOKED
 }

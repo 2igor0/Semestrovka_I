@@ -1,13 +1,12 @@
 using System.Buffers.Binary;
 using System.Text;
+using Protocol.DI;
+using Protocol.@enum;
 
 namespace Protocol;
 
 public static class ProtocolServer
 {
-    public const string Ready = "READY";
-
-    private const int GuidSize = 16;
     private const int LengthPrefixSize = sizeof(ushort);
     private const int MaxDatagramBytes = 512;
 
@@ -52,9 +51,9 @@ public static class ProtocolServer
 
         Utf8.GetBytes(order.Description, buffer.AsSpan(offset, descriptionSize));
         
-        return EncodeMessage(MessageType.ORDER, courierId, order.Id, buffer);
+        return GeneralEncoder.EncodeMessage(MessageType.ORDER, courierId, order.Id, buffer);
     }
-
+    
     private static int GetUtf8ByteCount(string value, string paramName)
     {
         int size;
@@ -80,27 +79,15 @@ public static class ProtocolServer
 
         return size;
     }
-
-    private const int HeaderSize = 1 + GuidSize * 2; //33
     
-    //перенести
-    public static byte[] EncodeMessage(MessageType type, Guid courierId, Guid orderId, byte[] payload)
+    
+    public static byte[] EncodeGo(Guid orderId, Guid courierId)
     {
-        // Guid courierId, еще добавить
-        var totalSize = 1 + GuidSize * 2 + payload.Length; // 1 это type + 16 * 2 это guid
-        var buffer = new byte[totalSize];
-        
-        if (totalSize > MaxDatagramBytes)
-        {
-            throw new ArgumentException(
-                $"Заказ занимает {totalSize} байт, максимум сейчас {MaxDatagramBytes}.");
-        }
-
-        buffer[0] = (byte)type;
-        courierId.TryWriteBytes(buffer.AsSpan(1, GuidSize));
-        orderId.TryWriteBytes(buffer.AsSpan(17, GuidSize));
-        payload.CopyTo(buffer.AsSpan(HeaderSize));
-
-        return buffer;
+        return GeneralEncoder.EncodeMessage(MessageType.GO, courierId, orderId, []);
+    }
+    
+    public static byte[] EncodeRevoked(Guid orderId, Guid courierId)
+    {
+        return GeneralEncoder.EncodeMessage(MessageType.REVOKED, courierId, orderId, []);
     }
 }

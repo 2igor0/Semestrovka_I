@@ -1,4 +1,4 @@
-namespace Protocol;
+namespace Protocol.DI;
 
 public interface IOrder
 {

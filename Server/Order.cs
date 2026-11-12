@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Net;
 using Protocol;
+using Protocol.DI;
 
 namespace Server;
 
@@ -10,11 +11,8 @@ public class Order : IOrder
     public string Address { get; set; }
     public string Description { get; set; }
     public DateTime CreatedAd { get; set; }
-    public EndPoint Courier  { get; set; } //вместо этого сделать ID-шнник нормальный курьера, возможно переподключиться
+    public Guid CourierId  { get; set; } 
     public OrderStatus Status { get; set; }
-    
-    
-    public Guid? AssignedCourierKey { get; set; } //чей заказ
     public int Attempts { get; set; }
     public long LastSentAt { get; set; } //когда последний раз отправляли, можно DateTime мб
     public long AckedAt { get; set; } //когда курьер подтвердил получение, нужно ли?
