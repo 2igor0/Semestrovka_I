@@ -4,6 +4,7 @@ using System.Text;
 using System.Threading.Channels;
 using Protocol;
 using Protocol.@enum;
+using Server.Entities;
 
 namespace Server;
 
@@ -20,7 +21,7 @@ public static class ProtocolHandler
             var datagram = bytes.AsSpan(0, result.ReceivedBytes);
             var answer = GeneralParser.Pars(datagram);
 
-            if (answer is null || !Enum.IsDefined(answer.MessageType))
+            if (!Enum.IsDefined(answer.MessageType))
             {
                 continue;
             }

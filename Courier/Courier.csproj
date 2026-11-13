@@ -17,4 +17,8 @@
       <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.6" />
     </ItemGroup>
 
+    <ItemGroup>
+      <AvaloniaResource Include="Assets\**" />
+    </ItemGroup>
+
 </Project>

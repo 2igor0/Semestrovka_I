@@ -1,5 +1,8 @@
 using System.Net;
 using Server;
+using Server.Entities;
+using Server.enums;
+using Server.Repositories;
 
 namespace Tests;
 

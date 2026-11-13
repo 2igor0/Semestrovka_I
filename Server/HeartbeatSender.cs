@@ -1,5 +1,6 @@
 using System.Net.Sockets;
 using Protocol;
+using Server.Entities;
 
 namespace Server;
 

@@ -4,20 +4,17 @@ using System.Threading.Channels;
 using Protocol;
 using Protocol.Entities;
 using Protocol.@enum;
+using Server.Entities;
+using Server.enums;
+using Server.Repositories;
 
 namespace Server;
 
-public sealed class ServerRuntime
+public sealed class ServerRuntime(Socket socketServer)
 {
-    private readonly Socket _socketServer;
     private readonly List<Guid> _availableCouriers = new();
     private readonly HashSet<Guid> _availableCourierKeys = new();
     private readonly Dictionary<PendingMessageKey, PendingMessage> _pendingMessages = new();
-
-    public ServerRuntime(Socket socketServer)
-    {
-        _socketServer = socketServer;
-    }
 
     public async Task RunAsync(ChannelReader<ServerEvent> reader, CancellationToken token)
     {
@@ -130,7 +127,7 @@ public sealed class ServerRuntime
                     pending.LastSendTime = DateTime.Now;
                 }
 
-                await _socketServer.SendToAsync(mes, remoteEndPoint, token);
+                await socketServer.SendToAsync(mes, remoteEndPoint, token);
             }
             else if (order.Status == OrderStatus.Proposed)
             {
@@ -143,7 +140,7 @@ public sealed class ServerRuntime
                 };
                 _pendingMessages.Add(key, value);
 
-                await _socketServer.SendToAsync(mes, remoteEndPoint, token);
+                await socketServer.SendToAsync(mes, remoteEndPoint, token);
                 order.Status = OrderStatus.WaitingApprov;
             }
             else
@@ -286,7 +283,7 @@ public sealed class ServerRuntime
     private async Task Revoked(ProtocolMessage message, EndPoint endPoint, CancellationToken token)
     {
         var bytes = ProtocolServer.EncodeRevoked(message.OrderId, message.CourierId);
-        await _socketServer.SendToAsync(bytes, endPoint, token);
+        await socketServer.SendToAsync(bytes, endPoint, token);
     }
 
     private static bool IsHeartbeatPhase(Guid orderId)
@@ -324,7 +321,7 @@ public sealed class ServerRuntime
                               && IsHeartbeatPhase(courier.CurrentOrderId))
             .ToList();
 
-        await HeartbeatSender.SendAsync(_socketServer, busyCouriers, token);
+        await HeartbeatSender.SendAsync(socketServer, busyCouriers, token);
 
         foreach (var (key, value) in _pendingMessages.ToList())
         {
@@ -377,7 +374,7 @@ public sealed class ServerRuntime
             }
 
             var courierEndPoint = InMemoryCourierRepository.GetEndPointByCourierId(key.CourierId);
-            await _socketServer.SendToAsync(value.Bytes, courierEndPoint, token);
+            await socketServer.SendToAsync(value.Bytes, courierEndPoint, token);
 
             value.Attempts++;
             value.LastSendTime = DateTime.Now;
@@ -424,7 +421,7 @@ public sealed class ServerRuntime
             };
             _pendingMessages.Add(key, value);
 
-            await _socketServer.SendToAsync(bytes, courierEndPoint, token);
+            await socketServer.SendToAsync(bytes, courierEndPoint, token);
 
             order.CourierId = courierKey;
             order.Status = OrderStatus.Proposed;

@@ -1,9 +1,7 @@
-using System.ComponentModel;
-using System.Net;
-using Protocol;
 using Protocol.DI;
+using Server.enums;
 
-namespace Server;
+namespace Server.Entities;
 
 public class Order : IOrder
 {
@@ -15,7 +13,6 @@ public class Order : IOrder
     public OrderStatus Status { get; set; }
     public int Attempts { get; set; }
     public long LastSentAt { get; set; } //когда последний раз отправляли, можно DateTime мб
-    public long AckedAt { get; set; } //когда курьер подтвердил получение, нужно ли?
     public HashSet<Guid> RejectedBy { get; set; } //кто отказался, кому не предлагать
     
     

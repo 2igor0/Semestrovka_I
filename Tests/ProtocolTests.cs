@@ -2,6 +2,7 @@ using Protocol;
 using Protocol.Entities;
 using Protocol.@enum;
 using Server;
+using Server.Entities;
 
 namespace Tests;
 

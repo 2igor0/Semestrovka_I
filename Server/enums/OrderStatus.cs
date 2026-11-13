@@ -1,4 +1,4 @@
-namespace Server;
+namespace Server.enums;
 
 public enum OrderStatus 
 {

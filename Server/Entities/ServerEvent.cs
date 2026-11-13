@@ -1,8 +1,7 @@
 using System.Net;
-using Protocol;
 using Protocol.Entities;
 
-namespace Server;
+namespace Server.Entities;
 
 public enum ServerEventKind
 {

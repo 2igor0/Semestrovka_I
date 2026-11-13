@@ -1,6 +1,7 @@
 ﻿using System.Net;
 using System.Net.Sockets;
 using System.Threading.Channels;
+using Server.Entities;
 
 namespace Server;
 
@@ -15,9 +16,8 @@ class Program
 
         socketServer.Bind(
             new IPEndPoint(new IPAddress(new byte[] { 127, 0, 0, 1 }), 5050));
-
-        // переделать на Bounded, так как мб перегрузка будет
-        var events = Channel.CreateUnbounded<ServerEvent>();
+        
+        var events = Channel.CreateUnbounded<ServerEvent>(); // норм или баундед
 
         using var cts = new CancellationTokenSource();
         var runtime = new ServerRuntime(socketServer);

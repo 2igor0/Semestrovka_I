@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
+using Server.Entities;
+using Server.enums;
 
-namespace Server;
+namespace Server.Repositories;
 
 public static class InMemoryOrderRepository
 {
@@ -9,11 +11,6 @@ public static class InMemoryOrderRepository
     public static void Add(Order order)
     {
         _orders.TryAdd(order.Id, order);
-    }
-    
-    public static bool Contains(Guid orderId)
-    {
-        return _orders.ContainsKey(orderId);
     }
     
     public static Order? GetById(Guid orderId)

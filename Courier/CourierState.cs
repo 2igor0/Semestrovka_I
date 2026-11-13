@@ -22,7 +22,8 @@ public sealed class CourierState
     public CourierState(Guid courierId)
     {
         CourierId = courierId;
-        Snapshot = new CourierSnapshot(Guid.Empty, string.Empty, string.Empty, false, false);
+        Snapshot = new CourierSnapshot(Guid.Empty, string.Empty, 
+            string.Empty, false, false);
     }
 
     public Guid CourierId { get; }

@@ -98,7 +98,7 @@
                     Padding="28"
                     BorderBrush="#1E3552"
                     BorderThickness="1">
-                <Grid RowDefinitions="Auto,Auto,Auto,*,Auto">
+                <Grid RowDefinitions="Auto,Auto,*,Auto">
                     <Grid ColumnDefinitions="*,Auto">
                         <TextBlock Text="ТЕКУЩИЙ ЗАКАЗ" Classes="kicker" />
                         <Border Grid.Column="1"
@@ -140,27 +140,7 @@
                         </StackPanel>
                     </StackPanel>
 
-                    <Grid Grid.Row="3" VerticalAlignment="Bottom" Margin="0,28,0,0">
-                        <Border Background="#0A1526"
-                                CornerRadius="14"
-                                Padding="14,12">
-                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
-                                <Ellipse Width="9" Height="9" Fill="#5B8CFF" VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="1"
-                                           Text="Курьер назначается автоматически после появления заказа"
-                                           Classes="muted"
-                                           VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="2"
-                                           Text="LIVE"
-                                           Foreground="#34D399"
-                                           FontSize="11"
-                                           FontWeight="Bold"
-                                           VerticalAlignment="Center" />
-                            </Grid>
-                        </Border>
-                    </Grid>
-
-                    <StackPanel Grid.Row="4"
+                    <StackPanel Grid.Row="3"
                                 Orientation="Horizontal"
                                 HorizontalAlignment="Right"
                                 Spacing="12"
@@ -212,33 +192,7 @@
                             CornerRadius="18"
                             ClipToBounds="True">
                         <Viewbox Stretch="Uniform" Margin="12">
-                            <Canvas Width="390" Height="340">
-                                <Path Data="M 32,286 C 105,205 122,258 183,191 C 243,124 283,135 350,48"
-                                      Stroke="#284668"
-                                      StrokeThickness="5"
-                                      StrokeDashArray="7,5"
-                                      StrokeLineCap="Round" />
-                                <Ellipse Canvas.Left="21" Canvas.Top="275" Width="22" Height="22" Fill="#5B8CFF" />
-                                <Ellipse Canvas.Left="339" Canvas.Top="37" Width="22" Height="22" Fill="#34D399" />
-                                <Ellipse Canvas.Left="173" Canvas.Top="181" Width="20" Height="20" Fill="#F2C94C" />
-                                <Ellipse Canvas.Left="172" Canvas.Top="180" Width="22" Height="22" Fill="Transparent" Stroke="#F2C94C" StrokeThickness="1" />
-                                <TextBlock Canvas.Left="24" Canvas.Top="306"
-                                           Text="СТАРТ"
-                                           Foreground="#627C9D"
-                                           FontSize="11"
-                                           FontWeight="Bold" />
-                                <TextBlock Canvas.Left="312" Canvas.Top="68"
-                                           Text="ЗАКАЗ"
-                                           Foreground="#627C9D"
-                                           FontSize="11"
-                                           FontWeight="Bold" />
-                                <TextBlock Canvas.Left="28" Canvas.Top="40"
-                                           Text="СХЕМА МАРШРУТА"
-                                           Foreground="#334E70"
-                                           FontSize="11"
-                                           FontWeight="Bold"
-                                           LetterSpacing="2" />
-                            </Canvas>
+                            <Image Source="avares://Courier/Assets/Gemini_Generated_Image_9zpike9zpike9zpi.jpeg" />
                         </Viewbox>
                     </Border>
 

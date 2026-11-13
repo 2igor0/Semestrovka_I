@@ -1,8 +1,9 @@
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.Net;
+using Server.Entities;
 
-namespace Server;
+namespace Server.Repositories;
 
 public class InMemoryCourierRepository
 {
@@ -12,11 +13,6 @@ public class InMemoryCourierRepository
     {
         
         _couriers.TryAdd(courierKey, courierInfo);
-    }
-
-    public static void Update(Guid courierId, CourierInfo courierInfo)
-    {
-        _couriers[courierId] = courierInfo;
     }
 
     public static bool Contains(Guid courierKey) 
