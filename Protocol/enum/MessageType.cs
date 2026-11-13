@@ -9,5 +9,7 @@ public enum MessageType: byte
     GO,
     STARTED,
     DELIVERED,
-    REVOKED
+    REVOKED,
+    HEARTBEAT,
+    CANCEL
 }

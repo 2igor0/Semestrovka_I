@@ -87,4 +87,9 @@ public static class ProtocolCourier
     {
         return GeneralEncoder.EncodeMessage(MessageType.DELIVERED, courierId, orderId, []);
     }
+
+    public static byte[] EncodeCancel(Guid courierId, Guid orderId)
+    {
+        return GeneralEncoder.EncodeMessage(MessageType.CANCEL, courierId, orderId, []);
+    }
 }

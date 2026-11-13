@@ -27,6 +27,7 @@ public class Order : IOrder
         Description = description;
         CreatedAd = DateTime.Now;
         Status = OrderStatus.New;
+        RejectedBy = new();
     }
 
     public static Order Create(string description, string address)

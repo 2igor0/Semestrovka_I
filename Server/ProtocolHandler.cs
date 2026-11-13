@@ -25,7 +25,9 @@ public static class ProtocolHandler
                 continue;
             }
 
-            if (answer.MessageType != MessageType.ACK)
+            if (answer.MessageType != MessageType.ACK
+                && answer.MessageType != MessageType.HEARTBEAT
+                && answer.MessageType != MessageType.REVOKED)
             {
                 var ackBytes = GeneralEncoder.EncodeAck(answer.CourierId, answer.OrderId, answer.MessageType);
                 await socketServer.SendToAsync(ackBytes, result.RemoteEndPoint, token);

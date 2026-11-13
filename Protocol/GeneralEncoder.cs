@@ -37,4 +37,9 @@ public static class GeneralEncoder
     {
         return EncodeMessage(MessageType.ACK, courierId, orderId, new[] { (byte)ackedType });
     }
+    
+    public static byte[] EncodeHeartBeat(Guid courierId, Guid orderId)
+    {
+        return GeneralEncoder.EncodeMessage(MessageType.HEARTBEAT, courierId, orderId, []);
+    }
 }

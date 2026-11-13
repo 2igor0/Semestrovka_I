@@ -1,9 +1,11 @@
 ﻿using System.Net;
 using System.Net.Sockets;
-using System.Text;
+using System.Threading.Channels;
+using Avalonia;
+using Avalonia.Controls.ApplicationLifetimes;
 using Courier;
+using Courier.Gui;
 using Protocol;
-using Protocol.@enum;
 
 // dotnet run --project Courier -- --profile courier1
 
@@ -12,7 +14,7 @@ var socket = new Socket(
     SocketType.Dgram, 
     ProtocolType.Udp); 
 
-IPEndPoint serverEndpoint = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 5050);
+socket.Bind(new IPEndPoint(IPAddress.Any, 0));
 
 const string defaultProfile = "courier1";
 var profile = defaultProfile;
@@ -61,6 +63,9 @@ if (!Guid.TryParse(text, out var courierKey))
 }
 
 Console.WriteLine($"Профиль: {profile}");
+Console.WriteLine(
+    $"GUI: DISPLAY={Environment.GetEnvironmentVariable("DISPLAY") ?? "<нет>"}, " +
+    $"WAYLAND_DISPLAY={Environment.GetEnvironmentVariable("WAYLAND_DISPLAY") ?? "<нет>"}");
 
 
 Console.WriteLine("Для выхода на линию введи start: ");
@@ -71,18 +76,39 @@ while (command != "start")
     command = Console.ReadLine();
 }
 
-var buffer = ProtocolCourier.EncodeStart(courierKey);
-
-var session = new CourierSession();
-session.TrackPending(MessageType.START, Guid.Empty, buffer);
-
-await socket.SendToAsync(buffer, serverEndpoint);
+var events = Channel.CreateUnbounded<CourierEvent>();
+var state = new CourierState(courierKey);
+CourierGuiContext.Current = new CourierGuiContext(state, events.Writer);
 
 using var cts = new CancellationTokenSource();
-await Task.WhenAll(
-    ProtocolHandler.AcceptUdp(socket, session, cts.Token),
-    ProtocolHandler.ReadCommandsAsync(socket, session, cts.Token),
-    Ticker.TimerStart(socket, session, cts.Token));
+
+_ = ProtocolHandler.AcceptUdp(socket, events.Writer, cts.Token);
+_ = Task.Run(() => ConsoleReader.RunAsync(events.Writer, cts.Token), cts.Token);
+_ = Ticker.TimerStart(events.Writer, cts.Token);
+_ = CourierRuntime.RunAsync(socket, state, events.Reader, events.Writer, cts.Token);
+
+try
+{
+    Console.WriteLine("Запускаю GUI...");
+    BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+    Console.WriteLine("GUI закрыт.");
+}
+catch (Exception exception)
+{
+    Console.WriteLine($"GUI не запустился: {exception}");
+}
+finally
+{
+    cts.Cancel();
+}
+
+static AppBuilder BuildAvaloniaApp()
+{
+    return AppBuilder
+        .Configure<App>()
+        .UsePlatformDetect()
+        .LogToTrace();
+}
 
 static string? FindProfilesDirectory()
 {

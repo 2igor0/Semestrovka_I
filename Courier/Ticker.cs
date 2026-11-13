@@ -1,19 +1,16 @@
-using System.Net.Sockets;
+using System.Threading.Channels;
 
 namespace Courier;
 
 public static class Ticker
 {
-    public static async Task TimerStart(Socket socketCourier, CourierSession session, CancellationToken ct)
+    public static async Task TimerStart(ChannelWriter<CourierEvent> writer, CancellationToken ct)
     {
         using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
 
         while (await timer.WaitForNextTickAsync(ct))
         {
-            foreach (var bytes in session.CollectDue())
-            {
-                await ProtocolHandler.SendAsync(socketCourier, bytes, ct);
-            }
+            await writer.WriteAsync(CourierEvent.Tick(), ct);
         }
     }
 }
